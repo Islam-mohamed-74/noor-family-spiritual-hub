@@ -1,10 +1,10 @@
-export type UserRole = 'admin' | 'member';
+export type UserRole = "admin" | "member";
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  password: string;
+  password?: string; // only present in mock/localStorage mode
   role: UserRole;
   familyId: string;
   avatar?: string;
@@ -20,7 +20,7 @@ export interface Family {
   };
 }
 
-export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+export type PrayerName = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
 
 export interface PrayerLog {
   name: PrayerName;
@@ -88,11 +88,11 @@ export interface Nudge {
 }
 
 export const PRAYER_NAMES: Record<PrayerName, string> = {
-  fajr: 'الفجر',
-  dhuhr: 'الظهر',
-  asr: 'العصر',
-  maghrib: 'المغرب',
-  isha: 'العشاء',
+  fajr: "الفجر",
+  dhuhr: "الظهر",
+  asr: "العصر",
+  maghrib: "المغرب",
+  isha: "العشاء",
 };
 
 export const POINTS = {

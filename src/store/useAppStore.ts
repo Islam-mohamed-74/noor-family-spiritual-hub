@@ -61,7 +61,12 @@ export const useAppStore = create<AppState>((set, get) => {
       const profile = await getCurrentUser();
       set(
         profile
-          ? { user: mapProfileToUser(profile), session, loading: false, initialized: true }
+          ? {
+              user: mapProfileToUser(profile),
+              session,
+              loading: false,
+              initialized: true,
+            }
           : { user: null, session: null, loading: false, initialized: true },
       );
     } else {

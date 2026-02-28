@@ -20,15 +20,23 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const user = useAppStore((s) => s.user);
   const loading = useAppStore((s) => s.loading);
 
-  // Show loading state while checking authentication
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/auth" replace />;
 
-  // Redirect to auth if not logged in
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+  return <>{children}</>;
+}
+
+/**
+ * FamilyRoute — requires auth AND a familyId.
+ * Users without a family are redirected to /family-setup.
+ */
+export function FamilyRoute({ children }: { children: ReactNode }) {
+  const user = useAppStore((s) => s.user);
+  const loading = useAppStore((s) => s.loading);
+
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!user.familyId) return <Navigate to="/family-setup" replace />;
 
   return <>{children}</>;
 }
@@ -37,20 +45,10 @@ export function AdminRoute({ children }: { children: ReactNode }) {
   const user = useAppStore((s) => s.user);
   const loading = useAppStore((s) => s.loading);
 
-  // Show loading state while checking authentication
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  // Redirect to auth if not logged in
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  // Redirect to dashboard if not admin
-  if (user.role !== "admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!user.familyId) return <Navigate to="/family-setup" replace />;
+  if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 }

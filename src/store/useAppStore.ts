@@ -16,6 +16,8 @@ interface AppState {
   ramadanMode: boolean;
   darkMode: boolean;
   setLoading: (loading: boolean) => void;
+  setUser: (user: User | null) => void;
+  refreshUser: () => Promise<void>;
   toggleKidsMode: () => void;
   toggleRamadanMode: () => void;
   toggleDarkMode: () => void;
@@ -27,6 +29,8 @@ export const useAppStore = create<AppState>((set, get) => {
   const kidsMode = localStorage.getItem("noor_kids") === "true";
   const ramadanMode = localStorage.getItem("noor_ramadan") === "true";
   if (darkMode) document.documentElement.classList.add("dark");
+  if (ramadanMode) document.documentElement.classList.add("ramadan");
+  if (kidsMode) document.documentElement.classList.add("kids-mode");
 
   // Set up auth state listener — single source of truth for auth state
   onAuthStateChange(async (event, session) => {
@@ -53,10 +57,19 @@ export const useAppStore = create<AppState>((set, get) => {
 
     setLoading: (loading) => set({ loading }),
 
+    setUser: (user) => set({ user }),
+
+    refreshUser: async () => {
+      const profile = await getCurrentUser();
+      if (profile) set({ user: mapProfileToUser(profile) });
+    },
+
     toggleKidsMode: () =>
       set((s) => {
         const v = !s.kidsMode;
         localStorage.setItem("noor_kids", String(v));
+        if (v) document.documentElement.classList.add("kids-mode");
+        else document.documentElement.classList.remove("kids-mode");
         return { kidsMode: v };
       }),
 
@@ -64,6 +77,8 @@ export const useAppStore = create<AppState>((set, get) => {
       set((s) => {
         const v = !s.ramadanMode;
         localStorage.setItem("noor_ramadan", String(v));
+        if (v) document.documentElement.classList.add("ramadan");
+        else document.documentElement.classList.remove("ramadan");
         return { ramadanMode: v };
       }),
 

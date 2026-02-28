@@ -1,11 +1,9 @@
-import { useMemo } from "react";
 import { getDailyHadith } from "@/lib/hadith";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
 
 export default function DailyHadith() {
-  // Memoize for the current render session (changes each calendar day)
-  const hadith = useMemo(() => getDailyHadith(), []);
+  const hadith = getDailyHadith();
 
   return (
     <Card className="border-primary/20 bg-primary/5">

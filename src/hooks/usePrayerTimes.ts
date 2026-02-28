@@ -1,3 +1,5 @@
+"use client";
+
 // ---------------------------------------------------------------------------
 // usePrayerTimes — Task 21: Prayer Times API
 // Integrates the Aladhan API (https://aladhan.com/prayer-times-api).

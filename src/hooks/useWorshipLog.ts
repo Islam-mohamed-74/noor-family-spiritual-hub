@@ -1,15 +1,14 @@
+"use client";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import {
   getTodayLog,
   saveLog,
+  getLogsByUser,
   persistUserStats,
 } from "@/services/worship/logsService";
-import {
-  getTotalPoints,
-  getStreak,
-  calculateDayPoints,
-} from "@/services/worship/pointsService";
+import { calculateDayPoints } from "@/services/worship/pointsService";
 import { incrementMyActiveChallenges } from "@/services/social/challengeParticipantsService";
 import { logActivity } from "@/services/social/activityService";
 import { WorshipLog } from "@/types";
@@ -39,16 +38,32 @@ export function useWorshipLog() {
     enabled: !!user,
     staleTime: 1000 * 60 * 2, // 2 min
     queryFn: async () => {
-      const [log, totalPoints, streak] = await Promise.all([
+      // Fetch today's log and ALL logs in parallel (only 2 requests, not 3)
+      const [todayLog, allLogs] = await Promise.all([
         getTodayLog(user!.id),
-        getTotalPoints(user!.id),
-        getStreak(user!.id),
+        getLogsByUser(user!.id),
       ]);
+      // Compute points & streak locally from the fetched logs
+      const totalPoints = allLogs.reduce(
+        (sum, l) => sum + calculateDayPoints(l),
+        0,
+      );
+      let streak = 0;
+      const sorted = [...allLogs].sort((a, b) => b.date.localeCompare(a.date));
+      const today = new Date();
+      for (let i = 0; i < sorted.length; i++) {
+        const expected = new Date(today);
+        expected.setDate(expected.getDate() - i);
+        const expectedStr = expected.toISOString().split("T")[0];
+        const log = sorted.find((l) => l.date === expectedStr);
+        if (log && log.prayers.some((p) => p.completed)) streak++;
+        else break;
+      }
       return {
-        log,
+        log: todayLog,
         totalPoints,
         streak,
-        todayPoints: log ? calculateDayPoints(log) : 0,
+        todayPoints: todayLog ? calculateDayPoints(todayLog) : 0,
       };
     },
   });
@@ -80,10 +95,29 @@ export function useSaveWorshipLog() {
           pointsEarned: 0,
         }).catch(() => {});
       }
-      const [totalPoints, streak] = await Promise.all([
-        getTotalPoints(user!.id),
-        getStreak(user!.id),
-      ]);
+      // Compute points & streak locally from all logs (1 fetch, not 2)
+      const allLogs = await getLogsByUser(user!.id);
+      // Replace today's log in the list with the updated version
+      const logsWithUpdate = allLogs.map((l) =>
+        l.date === updated.date ? updated : l,
+      );
+      const totalPoints = logsWithUpdate.reduce(
+        (sum, l) => sum + calculateDayPoints(l),
+        0,
+      );
+      let streak = 0;
+      const sorted = [...logsWithUpdate].sort((a, b) =>
+        b.date.localeCompare(a.date),
+      );
+      const today = new Date();
+      for (let i = 0; i < sorted.length; i++) {
+        const expected = new Date(today);
+        expected.setDate(expected.getDate() - i);
+        const expectedStr = expected.toISOString().split("T")[0];
+        const log = sorted.find((l) => l.date === expectedStr);
+        if (log && log.prayers.some((p) => p.completed)) streak++;
+        else break;
+      }
       return { log: updated, totalPoints, streak };
     },
     onSuccess: ({ log, totalPoints, streak }) => {

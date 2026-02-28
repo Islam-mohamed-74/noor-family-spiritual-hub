@@ -1,30 +1,23 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { ActivityEvent, ActivityType } from "@/types";
+import { getFamilyId } from "@/services/family/familyService";
 
 // ---------------------------------------------------------------------------
 // Activity Feed Service  (Task 12)
 // ---------------------------------------------------------------------------
 
-async function getFamilyId(): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from("users")
-    .select("family_id")
-    .eq("id", user.id)
-    .single();
-  return data?.family_id ?? null;
-}
-
 export async function getFamilyFeed(
   familyId?: string,
-  limit = 30,
+  page = 1,
+  pageSize = 30,
 ): Promise<ActivityEvent[]> {
   try {
     const fid = familyId ?? (await getFamilyId());
     if (!fid) return [];
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     const { data, error } = await supabase
       .from("activity_log")
@@ -35,7 +28,7 @@ export async function getFamilyFeed(
       )
       .eq("family_id", fid)
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .range(from, to);
 
     if (error) return [];
 

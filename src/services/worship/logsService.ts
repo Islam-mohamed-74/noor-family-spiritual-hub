@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { WorshipLog } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -76,13 +77,22 @@ export async function getWorshipLogs(): Promise<WorshipLog[]> {
   }
 }
 
-export async function getLogsByUser(userId: string): Promise<WorshipLog[]> {
+export async function getLogsByUser(
+  userId: string,
+  startDate?: string,
+): Promise<WorshipLog[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("worship_logs")
       .select("*")
       .eq("user_id", userId)
       .order("date", { ascending: false });
+
+    if (startDate) {
+      query = query.gte("date", startDate);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching logs by user:", error);
@@ -106,13 +116,14 @@ export async function getLogByUserAndDate(
       .select("*")
       .eq("user_id", userId)
       .eq("date", date)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === "PGRST116") return null; // no rows
       console.error("Error fetching log:", error);
       return null;
     }
+
+    if (!data) return null;
 
     return mapSupabaseLogToWorshipLog(data);
   } catch (error) {

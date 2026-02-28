@@ -1,5 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/react/shallow";
 import {
   getFamilyFeed,
   subscribeFamilyFeed,
@@ -31,35 +33,34 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function FamilyFeed() {
-  const { user } = useAppStore();
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const user = useAppStore((s) => s.user);
+  const queryClient = useQueryClient();
   const [familyId, setFamilyId] = useState<string | null>(null);
 
-  const loadFeed = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const family = await getFamily();
-    if (family) {
+  // Cached query — no refetch on tab switch or navigation
+  const { data: events = [], isLoading: loading } = useQuery({
+    queryKey: ["family-feed", user?.id],
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const family = await getFamily();
+      if (!family) return [];
       setFamilyId(family.id);
-      const feed = await getFamilyFeed(family.id, 25);
-      setEvents(feed);
-    }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
+      return getFamilyFeed(family.id, 25);
+    },
+  });
 
   // Subscribe to Realtime updates
   useEffect(() => {
     if (!familyId) return;
     const unsubscribe = subscribeFamilyFeed(familyId, (newEvent) => {
-      setEvents((prev) => [newEvent, ...prev.slice(0, 24)]);
+      queryClient.setQueryData<ActivityEvent[]>(
+        ["family-feed", user?.id],
+        (prev = []) => [newEvent, ...prev.slice(0, 24)],
+      );
     });
     return unsubscribe;
-  }, [familyId]);
+  }, [familyId, queryClient, user?.id]);
 
   if (loading)
     return (

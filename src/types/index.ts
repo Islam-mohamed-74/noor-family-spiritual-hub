@@ -91,13 +91,14 @@ export interface Nudge {
   read: boolean;
 }
 
-export const PRAYER_NAMES: Record<PrayerName, string> = {
-  fajr: "الفجر",
-  dhuhr: "الظهر",
-  asr: "العصر",
-  maghrib: "المغرب",
-  isha: "العشاء",
-};
+export const PRAYER_NAMES: Record<PrayerName, { icon: string; label: string }> =
+  {
+    fajr: { icon: "🌅", label: "الفجر" },
+    dhuhr: { icon: "☀️", label: "الظهر" },
+    asr: { icon: "🌤️", label: "العصر" },
+    maghrib: { icon: "🌇", label: "المغرب" },
+    isha: { icon: "🌙", label: "العشاء" },
+  };
 
 export const POINTS = {
   prayer: 10,

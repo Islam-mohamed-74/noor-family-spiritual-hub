@@ -1,0 +1,7 @@
+{
+  "/(family)/dashboard/page": "app/(family)/dashboard/page.js",
+  "/(family)/family/page": "app/(family)/family/page.js",
+  "/(family)/settings/page": "app/(family)/settings/page.js",
+  "/(family)/admin/page": "app/(family)/admin/page.js",
+  "/(family)/invite/page": "app/(family)/invite/page.js"
+}

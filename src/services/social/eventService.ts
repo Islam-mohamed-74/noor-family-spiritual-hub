@@ -1,22 +1,11 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { FamilyEvent, EventType } from "@/types";
+import { getFamilyId } from "@/services/family/familyService";
 
 // ---------------------------------------------------------------------------
 // Family Events Service  (Task 14)
 // ---------------------------------------------------------------------------
-
-async function getFamilyId(): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from("users")
-    .select("family_id")
-    .eq("id", user.id)
-    .single();
-  return data?.family_id ?? null;
-}
 
 export async function getFamilyEvents(
   familyId?: string,

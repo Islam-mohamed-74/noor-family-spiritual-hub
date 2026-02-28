@@ -1,3 +1,5 @@
+"use client";
+
 // ---------------------------------------------------------------------------
 // useWeeklyReport — Task 19: Weekly Report
 // Computes a rich weekly summary for the current user and their family.
@@ -62,13 +64,19 @@ export function useWeeklyReport() {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const [userLogs, members] = await Promise.all([
-        getLogsByUser(user!.id),
-        getFamilyMembers(),
-      ]);
+      const members = await getFamilyMembers();
+
+      // Fetch all member logs in parallel (includes the current user)
+      const allMemberLogs = await Promise.all(
+        members.map((m) => getLogsByUser(m.id)),
+      );
 
       const thisWeek = buildDateRange(6); // today & 6 days before
       const prevWeek = buildDateRange(13, 7); // 7–13 days ago
+
+      // Find the current user's logs from the batch
+      const userIdx = members.findIndex((m) => m.id === user!.id);
+      const userLogs = userIdx >= 0 ? allMemberLogs[userIdx] : [];
 
       const thisWeekLogs = userLogs.filter((l) => thisWeek.includes(l.date));
       const prevWeekLogs = userLogs.filter((l) => prevWeek.includes(l.date));
@@ -123,7 +131,7 @@ export function useWeeklyReport() {
         (l) => calculateDayPoints(l) > 0,
       ).length;
 
-      // Most committed family member (fetch in parallel)
+      // Most committed family member — use already-fetched logs
       let mostCommittedMember: {
         name: string;
         avatar: string;
@@ -131,15 +139,12 @@ export function useWeeklyReport() {
       } | null = null;
 
       if (members.length > 0) {
-        const allMemberPoints = await Promise.all(
-          members.map(async (m) => {
-            const logs = await getLogsByUser(m.id);
-            const pts = logs
-              .filter((l) => thisWeek.includes(l.date))
-              .reduce((sum, l) => sum + calculateDayPoints(l), 0);
-            return { name: m.name, avatar: m.avatar ?? "👤", points: pts };
-          }),
-        );
+        const allMemberPoints = members.map((m, idx) => {
+          const pts = allMemberLogs[idx]
+            .filter((l) => thisWeek.includes(l.date))
+            .reduce((sum, l) => sum + calculateDayPoints(l), 0);
+          return { name: m.name, avatar: m.avatar ?? "👤", points: pts };
+        });
         mostCommittedMember = allMemberPoints.reduce(
           (best, m) => (m.points > best.points ? m : best),
           allMemberPoints[0],

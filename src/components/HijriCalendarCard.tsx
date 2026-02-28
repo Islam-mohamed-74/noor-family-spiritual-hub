@@ -3,7 +3,6 @@
 // Shows the current Islamic month as a grid with event markers.
 // ---------------------------------------------------------------------------
 
-import { useMemo } from "react";
 import { buildHijriMonth } from "@/lib/hijri";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,10 +15,7 @@ import {
 const WEEKDAY_LABELS = ["أحد", "إثن", "ثلا", "أرب", "خمس", "جمع", "سبت"];
 
 export default function HijriCalendarCard() {
-  const { days, monthName, hijriYear, firstWeekday } = useMemo(
-    () => buildHijriMonth(),
-    [],
-  );
+  const { days, monthName, hijriYear, firstWeekday } = buildHijriMonth();
 
   // Build a flat array: empty slots for the lead offset + actual days
   const cells: Array<(typeof days)[number] | null> = [

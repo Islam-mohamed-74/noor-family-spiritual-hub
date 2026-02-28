@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import type { Session } from "@supabase/supabase-js";
 import type { User } from "@/types";
 
@@ -64,7 +65,7 @@ async function getOrCreateProfile(
   };
   const { error: insertError } = await supabase
     .from("users")
-    .insert(newProfile);
+    .upsert(newProfile, { onConflict: "id", ignoreDuplicates: true });
   if (insertError) {
     console.error("Error creating user profile:", insertError);
     return null;
@@ -106,7 +107,7 @@ export async function signUp(
 
     const { error: profileError } = await supabase
       .from("users")
-      .insert(profileData);
+      .upsert(profileData, { onConflict: "id", ignoreDuplicates: true });
 
     if (profileError) {
       return { error: profileError.message };

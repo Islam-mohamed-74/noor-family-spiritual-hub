@@ -1,6 +1,10 @@
-import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+"use client";
+
+import { ReactNode, Suspense } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/react/shallow";
 import {
   LayoutDashboard,
   Users,
@@ -25,13 +29,22 @@ const NAV_ITEMS = [
   { to: "/settings", icon: Settings, label: "الإعدادات" },
 ];
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default function AppLayout({ children }: { children?: ReactNode }) {
   const { user, logout, kidsMode, ramadanMode, darkMode, toggleDarkMode } =
-    useAppStore();
-  const location = useLocation();
+    useAppStore(
+      useShallow((s) => ({
+        user: s.user,
+        logout: s.logout,
+        kidsMode: s.kidsMode,
+        ramadanMode: s.ramadanMode,
+        darkMode: s.darkMode,
+        toggleDarkMode: s.toggleDarkMode,
+      })),
+    );
+  const pathname = usePathname();
   const isMobile = useIsMobile();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => pathname === path;
 
   const showInvite = user?.role === "admin" && !!user?.familyId;
 
@@ -64,7 +77,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.to}
-                to={item.to}
+                href={item.to}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm",
                   isActive(item.to)
@@ -78,7 +91,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             ))}
             {user?.role === "admin" && (
               <Link
-                to="/admin"
+                href="/admin"
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm",
                   isActive("/admin")
@@ -92,7 +105,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
             {showInvite && (
               <Link
-                to="/invite"
+                href="/invite"
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm",
                   isActive("/invite")
@@ -151,7 +164,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               <span className="text-2xl">{ramadanMode ? "🌙" : "☀️"}</span>
               <div>
-                <h1 className="font-bold text-primary leading-tight">نور العائلة</h1>
+                <h1 className="font-bold text-primary leading-tight">
+                  نور العائلة
+                </h1>
                 <HijriDate className="text-[10px] text-muted-foreground leading-none" />
               </div>
             </div>
@@ -168,7 +183,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </header>
         )}
 
-        <div className="p-4 md:p-6 max-w-5xl mx-auto">{children}</div>
+        <div className="p-4 md:p-6 max-w-5xl mx-auto">
+          <Suspense
+            fallback={
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-32 w-full rounded-xl bg-muted animate-pulse"
+                  />
+                ))}
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
+        </div>
       </main>
 
       {/* Mobile bottom nav */}
@@ -177,7 +207,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
-              to={item.to}
+              href={item.to}
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors text-xs",
                 isActive(item.to) ? "text-primary" : "text-muted-foreground",
@@ -191,13 +221,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           ))}
           {user?.role === "admin" && (
             <Link
-              to="/admin"
+              href="/admin"
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors text-xs",
                 isActive("/admin") ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <Shield className="h-5 w-5" />
+              <Shield
+                className={cn("h-5 w-5", isActive("/admin") && "text-primary")}
+              />
               <span>الإدارة</span>
             </Link>
           )}

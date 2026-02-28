@@ -1,5 +1,24 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { Family } from "@/types";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Get current user's family ID from profile */
+export async function getFamilyId(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("users")
+    .select("family_id")
+    .eq("id", user.id)
+    .single();
+  return data?.family_id ?? null;
+}
 
 // ---------------------------------------------------------------------------
 // Family CRUD

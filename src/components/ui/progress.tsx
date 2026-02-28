@@ -1,3 +1,4 @@
+"use client";
 import * as React from "react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 
@@ -21,3 +22,4 @@ const Progress = React.forwardRef<
 Progress.displayName = ProgressPrimitive.Root.displayName;
 
 export { Progress };
+

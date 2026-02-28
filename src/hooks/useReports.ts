@@ -1,9 +1,8 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
-import {
-  getLogsByUser,
-  getLogByUserAndDate,
-} from "@/services/worship/logsService";
+import { getLogsByUser } from "@/services/worship/logsService";
 import { calculateDayPoints } from "@/services/worship/pointsService";
 import { getFamilyMembers } from "@/services/family/memberService";
 import { qk } from "@/lib/queryKeys";
@@ -90,15 +89,20 @@ export function useReports(selectedUserId?: string, days: ChartDays = 7) {
 
   const members = membersQuery.data ?? [];
 
-  // --- Personal chart --- (one data point per day in the window)
-  const personalQuery = useQuery<PersonalChartEntry[]>({
+  // --- Personal chart + trend (single fetch) ---
+  const personalQuery = useQuery<{
+    chart: PersonalChartEntry[];
+    trend: TrendInfo;
+  }>({
     queryKey: qk.reportsPersonal(targetUserId, days),
     enabled: !!targetUserId,
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
       const logs = await getLogsByUser(targetUserId);
       const logsMap = new Map(logs.map((l) => [l.date, l]));
-      return buildDates(days).map((dateStr) => {
+
+      const currentDates = buildDates(days);
+      const chart = currentDates.map((dateStr) => {
         const log = logsMap.get(dateStr);
         return {
           date: bucketLabel(dateStr, days),
@@ -112,67 +116,60 @@ export function useReports(selectedUserId?: string, days: ChartDays = 7) {
           القيام: log ? (log.witr ? 1 : 0) + (log.qiyam ? 1 : 0) : 0,
         };
       });
+
+      // Trend: compare current window vs previous equal window
+      const prevDates = Array.from({ length: days }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (days * 2 - 1 - i));
+        return d.toISOString().split("T")[0];
+      });
+      const sum = (dates: string[]) =>
+        dates.reduce((acc, d) => {
+          const log = logsMap.get(d);
+          return acc + (log ? calculateDayPoints(log) : 0);
+        }, 0);
+      const current = sum(currentDates);
+      const prev = sum(prevDates);
+      const delta = current - prev;
+      const trendPct =
+        prev > 0 ? Math.round((delta / prev) * 100) : current > 0 ? 100 : 0;
+
+      return { chart, trend: { trendPct, delta } };
     },
   });
 
-  // --- Family chart ---
+  // --- Family chart: fetch ALL logs per member once (not per-day) ---
   const familyQuery = useQuery<FamilyChartEntry[]>({
     queryKey: qk.reportsFamily(undefined, days),
     enabled: members.length > 0,
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
       const dates = buildDates(days);
-      return Promise.all(
-        dates.map(async (dateStr) => {
-          const entry: FamilyChartEntry = { date: bucketLabel(dateStr, days) };
-          await Promise.all(
-            members.map(async (m) => {
-              const log = await getLogByUserAndDate(m.id, dateStr);
-              entry[m.name] = log ? calculateDayPoints(log) : 0;
-            }),
-          );
-          return entry;
-        }),
+
+      // 1 fetch per member (was members × days before)
+      const memberLogs = await Promise.all(
+        members.map((m) => getLogsByUser(m.id)),
       );
-    },
-  });
+      const memberLogMaps = memberLogs.map(
+        (logs) => new Map(logs.map((l) => [l.date, l])),
+      );
 
-  // --- Trend: compare current window vs previous equal window ---
-  const trendQuery = useQuery<TrendInfo>({
-    queryKey: [...qk.reportsPersonal(targetUserId, days), "trend"],
-    enabled: !!targetUserId,
-    staleTime: 1000 * 60 * 5,
-    queryFn: async () => {
-      const logs = await getLogsByUser(targetUserId);
-      const logsMap = new Map(logs.map((l) => [l.date, l]));
-
-      const currentDates = buildDates(days);
-      const prevDates = Array.from({ length: days }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (days * 2 - 1 - i));
-        return d.toISOString().split("T")[0];
+      return dates.map((dateStr) => {
+        const entry: FamilyChartEntry = { date: bucketLabel(dateStr, days) };
+        members.forEach((m, idx) => {
+          const log = memberLogMaps[idx].get(dateStr);
+          entry[m.name] = log ? calculateDayPoints(log) : 0;
+        });
+        return entry;
       });
-
-      const sum = (dates: string[]) =>
-        dates.reduce((acc, d) => {
-          const log = logsMap.get(d);
-          return acc + (log ? calculateDayPoints(log) : 0);
-        }, 0);
-
-      const current = sum(currentDates);
-      const prev = sum(prevDates);
-      const delta = current - prev;
-      const trendPct =
-        prev > 0 ? Math.round((delta / prev) * 100) : current > 0 ? 100 : 0;
-      return { trendPct, delta };
     },
   });
 
   return {
     members,
-    personalChartData: personalQuery.data ?? [],
+    personalChartData: personalQuery.data?.chart ?? [],
     familyChartData: familyQuery.data ?? [],
-    trend: trendQuery.data ?? { trendPct: 0, delta: 0 },
+    trend: personalQuery.data?.trend ?? { trendPct: 0, delta: 0 },
     isLoading:
       membersQuery.isLoading ||
       personalQuery.isLoading ||

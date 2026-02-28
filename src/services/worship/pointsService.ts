@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { WorshipLog, POINTS } from "@/types";
 import { getLogsByUser, getLogByUserAndDate } from "./logsService";
 import { getFamilyMembers } from "@/services/family/memberService";
@@ -35,13 +36,13 @@ export function calculateDayPoints(log: WorshipLog): number {
 // Aggregate calculations
 // ---------------------------------------------------------------------------
 
-export async function getTotalPoints(userId: string): Promise<number> {
-  const logs = await getLogsByUser(userId);
+/** Calculate total points from all logs */
+export function calculateTotalPoints(logs: WorshipLog[]): number {
   return logs.reduce((sum, log) => sum + calculateDayPoints(log), 0);
 }
 
-export async function getWeeklyPoints(userId: string): Promise<number> {
-  const logs = await getLogsByUser(userId);
+/** Calculate points for the last 7 days */
+export function calculateWeeklyPoints(logs: WorshipLog[]): number {
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
   return logs
@@ -49,23 +50,55 @@ export async function getWeeklyPoints(userId: string): Promise<number> {
     .reduce((sum, log) => sum + calculateDayPoints(log), 0);
 }
 
-export async function getStreak(userId: string): Promise<number> {
-  const logs = await getLogsByUser(userId);
-  const sorted = logs.sort((a, b) => b.date.localeCompare(a.date));
+/** Calculate consecutive streak of days with at least one prayer completed */
+export function calculateStreak(logs: WorshipLog[]): number {
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
   let streak = 0;
-  const today = new Date();
-  for (let i = 0; i < sorted.length; i++) {
-    const expected = new Date(today);
-    expected.setDate(expected.getDate() - i);
-    const expectedStr = expected.toISOString().split("T")[0];
-    const log = sorted.find((l) => l.date === expectedStr);
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  // If no log for today AND no log for yesterday, streak is zero
+  const hasToday = sorted.some(
+    (l) => l.date === today && l.prayers.some((p) => p.completed),
+  );
+  const hasYesterday = sorted.some(
+    (l) => l.date === yesterday && l.prayers.some((p) => p.completed),
+  );
+
+  if (!hasToday && !hasYesterday) return 0;
+
+  // Check backwards from today/yesterday
+  for (let i = 0; ; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dStr = d.toISOString().split("T")[0];
+
+    const log = sorted.find((l) => l.date === dStr);
     if (log && log.prayers.some((p) => p.completed)) {
       streak++;
     } else {
+      // If we missed today but have yesterday, we continue.
+      // If we missed any other day, we stop.
+      if (i === 0 && hasYesterday) continue;
       break;
     }
   }
   return streak;
+}
+
+export async function getTotalPoints(userId: string): Promise<number> {
+  const logs = await getLogsByUser(userId);
+  return calculateTotalPoints(logs);
+}
+
+export async function getWeeklyPoints(userId: string): Promise<number> {
+  const logs = await getLogsByUser(userId);
+  return calculateWeeklyPoints(logs);
+}
+
+export async function getStreak(userId: string): Promise<number> {
+  const logs = await getLogsByUser(userId);
+  return calculateStreak(logs);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
 
 // Loading spinner component
@@ -16,27 +16,19 @@ function LoadingScreen() {
   );
 }
 
-export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const user = useAppStore((s) => s.user);
-  const loading = useAppStore((s) => s.loading);
-
-  if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/auth" replace />;
-
-  return <>{children}</>;
-}
-
-/**
- * FamilyRoute — requires auth AND a familyId.
- * Users without a family are redirected to /family-setup.
- */
 export function FamilyRoute({ children }: { children: ReactNode }) {
   const user = useAppStore((s) => s.user);
   const loading = useAppStore((s) => s.loading);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user?.familyId) {
+      router.replace("/family-setup");
+    }
+  }, [user, loading, router]);
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (!user.familyId) return <Navigate to="/family-setup" replace />;
+  if (!user?.familyId) return null;
 
   return <>{children}</>;
 }
@@ -44,11 +36,20 @@ export function FamilyRoute({ children }: { children: ReactNode }) {
 export function AdminRoute({ children }: { children: ReactNode }) {
   const user = useAppStore((s) => s.user);
   const loading = useAppStore((s) => s.loading);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user?.familyId) {
+        router.replace("/family-setup");
+      } else if (user.role !== "admin") {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, loading, router]);
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (!user.familyId) return <Navigate to="/family-setup" replace />;
-  if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
+  if (!user?.familyId || user.role !== "admin") return null;
 
   return <>{children}</>;
 }

@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   avatar TEXT DEFAULT '👤',
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   family_id UUID REFERENCES public.families(id) ON DELETE SET NULL,
+  total_points INTEGER NOT NULL DEFAULT 0,
+  current_streak INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -49,6 +51,8 @@ CREATE TABLE IF NOT EXISTS public.worship_logs (
   iftar BOOLEAN DEFAULT FALSE,
   tarawih BOOLEAN DEFAULT FALSE,
   tarawih_rakaat INTEGER DEFAULT 0,
+  quran_surah_note TEXT,
+  fasting_type TEXT CHECK (fasting_type IN ('fard', 'sunnah')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, date)

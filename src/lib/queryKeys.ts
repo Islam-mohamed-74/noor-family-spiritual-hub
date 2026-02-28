@@ -32,6 +32,10 @@ export const qk = {
   familyMembers: (familyId?: string) =>
     ["family", "members", familyId ?? "current"] as const,
 
+  /** Full dashboard data (members, family meta, completion, etc.) */
+  familyDashboard: (familyId?: string) =>
+    ["family", "dashboard", familyId ?? "current"] as const,
+
   /** Family daily prayer completion percentage for a given date */
   familyDailyCompletion: (date: string) =>
     ["family", "daily-completion", date] as const,
@@ -51,6 +55,19 @@ export const qk = {
 
   /** Weekly summary report for a user */
   weeklyReport: (userId: string) => ["reports", "weekly", userId] as const,
+
+  // --- Admin/Setup -----------------------------------------------------
+  /** Admin page full data for current user */
+  adminPage: (userId: string) => ["admin", "page", userId] as const,
+
+  /** Family page data for a user */
+  familyPage: (userId: string) => ["family", "page", userId] as const,
+
+  /** Invite code for current user's family */
+  inviteCode: (familyId: string) => ["invite", "code", familyId] as const,
+
+  /** Reward claims for a user */
+  myClaims: (userId: string) => ["social", "my-claims", userId] as const,
 
   // --- Prayer Times -----------------------------------------------------
   /** Prayer times for a specific location and date */

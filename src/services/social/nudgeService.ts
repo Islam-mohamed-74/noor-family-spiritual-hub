@@ -1,13 +1,22 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { Nudge } from "@/types";
 
-export async function getNudges(userId: string): Promise<Nudge[]> {
+export async function getNudges(
+  userId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<Nudge[]> {
   try {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from("nudges")
       .select("*")
       .eq("to_user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
     if (error) return [];
     return (data || []).map((n: any) => ({
       id: n.id,

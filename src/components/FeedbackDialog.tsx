@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { submitFeedback } from "@/services/social/feedbackService";
 import { FeedbackType } from "@/types";

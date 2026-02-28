@@ -1,22 +1,11 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 import { RewardClaim, ClaimStatus } from "@/types";
+import { getFamilyId } from "@/services/family/familyService";
 
 // ---------------------------------------------------------------------------
 // Reward Claims Service  (Task 16 – Reward Redemption)
 // ---------------------------------------------------------------------------
-
-async function getFamilyId(): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from("users")
-    .select("family_id")
-    .eq("id", user.id)
-    .single();
-  return data?.family_id ?? null;
-}
 
 export async function claimReward(
   rewardId: string,

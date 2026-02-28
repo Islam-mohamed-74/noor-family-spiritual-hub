@@ -12,6 +12,7 @@ interface AppState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  initialized: boolean;
   kidsMode: boolean;
   ramadanMode: boolean;
   darkMode: boolean;
@@ -25,25 +26,46 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => {
-  const darkMode = localStorage.getItem("noor_dark") === "true";
-  const kidsMode = localStorage.getItem("noor_kids") === "true";
-  const ramadanMode = localStorage.getItem("noor_ramadan") === "true";
-  if (darkMode) document.documentElement.classList.add("dark");
-  if (ramadanMode) document.documentElement.classList.add("ramadan");
-  if (kidsMode) document.documentElement.classList.add("kids-mode");
+  const isClient = typeof window !== "undefined";
+  const darkMode = isClient
+    ? localStorage.getItem("noor_dark") === "true"
+    : false;
+  const kidsMode = isClient
+    ? localStorage.getItem("noor_kids") === "true"
+    : false;
+  const ramadanMode = isClient
+    ? localStorage.getItem("noor_ramadan") === "true"
+    : false;
+
+  if (isClient) {
+    if (darkMode) document.documentElement.classList.add("dark");
+    if (ramadanMode) document.documentElement.classList.add("ramadan");
+    if (kidsMode) document.documentElement.classList.add("kids-mode");
+  }
 
   // Set up auth state listener — single source of truth for auth state
   onAuthStateChange(async (event, session) => {
     if (session) {
+      // If the user is already loaded, skip re-fetch for token refresh / tab focus
+      // to avoid flashing a loading screen on every Alt+Tab.
+      const { user: currentUser } = get();
+      if (
+        currentUser &&
+        (event === "TOKEN_REFRESHED" || event === "SIGNED_IN")
+      ) {
+        set({ session, initialized: true });
+        return;
+      }
+
       set({ loading: true });
       const profile = await getCurrentUser();
       set(
         profile
-          ? { user: mapProfileToUser(profile), session, loading: false }
-          : { user: null, session: null, loading: false },
+          ? { user: mapProfileToUser(profile), session, loading: false, initialized: true }
+          : { user: null, session: null, loading: false, initialized: true },
       );
     } else {
-      set({ user: null, session: null, loading: false });
+      set({ user: null, session: null, loading: false, initialized: true });
     }
   });
 
@@ -51,6 +73,7 @@ export const useAppStore = create<AppState>((set, get) => {
     user: null,
     session: null,
     loading: true,
+    initialized: false,
     kidsMode,
     ramadanMode,
     darkMode,
@@ -67,27 +90,33 @@ export const useAppStore = create<AppState>((set, get) => {
     toggleKidsMode: () =>
       set((s) => {
         const v = !s.kidsMode;
-        localStorage.setItem("noor_kids", String(v));
-        if (v) document.documentElement.classList.add("kids-mode");
-        else document.documentElement.classList.remove("kids-mode");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("noor_kids", String(v));
+          if (v) document.documentElement.classList.add("kids-mode");
+          else document.documentElement.classList.remove("kids-mode");
+        }
         return { kidsMode: v };
       }),
 
     toggleRamadanMode: () =>
       set((s) => {
         const v = !s.ramadanMode;
-        localStorage.setItem("noor_ramadan", String(v));
-        if (v) document.documentElement.classList.add("ramadan");
-        else document.documentElement.classList.remove("ramadan");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("noor_ramadan", String(v));
+          if (v) document.documentElement.classList.add("ramadan");
+          else document.documentElement.classList.remove("ramadan");
+        }
         return { ramadanMode: v };
       }),
 
     toggleDarkMode: () =>
       set((s) => {
         const v = !s.darkMode;
-        localStorage.setItem("noor_dark", String(v));
-        if (v) document.documentElement.classList.add("dark");
-        else document.documentElement.classList.remove("dark");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("noor_dark", String(v));
+          if (v) document.documentElement.classList.add("dark");
+          else document.documentElement.classList.remove("dark");
+        }
         return { darkMode: v };
       }),
 
